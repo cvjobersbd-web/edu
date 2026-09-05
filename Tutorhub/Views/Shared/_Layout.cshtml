@@ -284,13 +284,11 @@
                     <a asp-controller="Home" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Home</a>
                     <a href="#how-it-works" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Learn</a>
                     <a href="#key-features" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Practice</a>
-                    <a href="#smart-analysis" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">AI Tutor</a>
                     <a href="#knowledge-mastery-graph" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Progress</a>
-                    <a href="#gamification-leaderboards" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Challenges</a>
                     <a href="#need-a-tutor" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Leaderboard</a>
                 </div>
 
-                <!-- Desktop Right Side - Login/User -->
+                <!-- Desktop Right Side - Login/User (Register রিমুভ করা হয়েছে) -->
                 <div class="hidden lg:flex items-center">
                     @if (Context.Session.GetString("UserName") != null)
                     {
@@ -315,10 +313,8 @@
                     }
                     else
                     {
+                        <!-- শুধু Login বাটন (Register রিমুভ করা হয়েছে) -->
                         <div class="flex items-center gap-2">
-                            <a asp-controller="Account" asp-action="Register" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold text-sm transition hover:opacity-80" style="color:#1F3B2C; border:1px solid #1F3B2C;">
-                                <i class="fas fa-user-plus"></i> Register
-                            </a>
                             <a asp-controller="Account" asp-action="Login" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-white text-sm transition hover:opacity-90" style="background-color:#1F3B2C;">
                                 <i class="fas fa-sign-in-alt"></i> Login
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5">
@@ -337,15 +333,13 @@
                 </button>
             </div>
 
-            <!-- Mobile Menu -->
+            <!-- Mobile Menu (Register রিমুভ করা হয়েছে) -->
             <div id="mobileMenu" class="hidden lg:hidden pb-5">
                 <div class="flex flex-col gap-4">
                     <a asp-controller="Home" asp-action="Index" class="text-sm" style="color:#4B5648;">Home</a>
                     <a href="#how-it-works" class="text-sm" style="color:#4B5648;">Learn</a>
                     <a href="#key-features" class="text-sm" style="color:#4B5648;">Practice</a>
-                    <a href="#smart-analysis" class="text-sm" style="color:#4B5648;">AI Tutor</a>
                     <a href="#knowledge-mastery-graph" class="text-sm" style="color:#4B5648;">Progress</a>
-                    <a href="#gamification-leaderboards" class="text-sm" style="color:#4B5648;">Challenges</a>
                     <a href="#need-a-tutor" class="text-sm" style="color:#4B5648;">Leaderboard</a>
 
                     <hr class="border-black/5" />
@@ -373,10 +367,8 @@
                     }
                     else
                     {
+                        <!-- শুধু Login বাটন (Register রিমুভ করা হয়েছে) -->
                         <div class="flex flex-col gap-2">
-                            <a asp-controller="Account" asp-action="Register" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full font-semibold text-sm transition hover:opacity-80" style="color:#1F3B2C; border:1px solid #1F3B2C;">
-                                <i class="fas fa-user-plus"></i> Register
-                            </a>
                             <a asp-controller="Account" asp-action="Login" class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-white text-sm" style="background-color:#1F3B2C;">
                                 <i class="fas fa-sign-in-alt"></i> Login
                             </a>
