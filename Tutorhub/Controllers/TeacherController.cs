@@ -80,28 +80,50 @@ namespace Tutorbub.Controllers
                 model.Status = "Pending";
 
                 Console.WriteLine("Calling CreateTeacherRequest...");
-                bool success = _dbHelper.CreateTeacherRequest(model);
+                bool success = _dbHelper.CreateTeacherRequest(model, out string? dbError);
                 Console.WriteLine($"CreateTeacherRequest result: {success}");
 
                 if (success)
                 {
                     TempData["Success"] = "Your teacher request has been submitted successfully! Please wait for admin approval.";
-                    Console.WriteLine("Success! Redirecting to RequestForm");
-                    return RedirectToAction("RequestForm");
+                    Console.WriteLine("Success! Rendering RequestForm view directly so the success popup shows");
+                    // NOTE: We intentionally do NOT redirect back to RequestForm() here.
+                    // The GET RequestForm() action checks GetUserTeacherRequestStatus() first,
+                    // and since the request we just created is "Pending", it would immediately
+                    // redirect again to Profile/Index before this view (and its success popup
+                    // script) ever gets a chance to render. Returning View(model) directly avoids
+                    // that redirect chain and lets the success modal show right away.
+                    return View(model);
                 }
                 else
                 {
-                    ViewBag.Error = "Failed to submit request. Please try again.";
-                    Console.WriteLine("Failed! Error set in ViewBag");
+                    // ডেটাবেজ থেকে আসা আসল error message দেখানো হচ্ছে, যাতে বোঝা যায় ঠিক কী কারণে
+                    // insert ব্যর্থ হলো (যেমন: টেবিল নেই, কলাম টাইপ মিসম্যাচ, কানেকশন সমস্যা ইত্যাদি)।
+                    ViewBag.Error = string.IsNullOrWhiteSpace(dbError)
+                        ? "Failed to submit request. Please try again."
+                        : $"Failed to submit request. Database error: {dbError}";
+                    Console.WriteLine("Failed! Error set in ViewBag: " + ViewBag.Error);
                 }
             }
             else
             {
                 Console.WriteLine("ModelState is invalid");
-                foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(m => !string.IsNullOrWhiteSpace(m))
+                    .ToList();
+
+                foreach (var error in errors)
                 {
-                    Console.WriteLine($"Model Error: {error.ErrorMessage}");
+                    Console.WriteLine($"Model Error: {error}");
                 }
+
+                // আগে এই ব্র্যাঞ্চে কোনো ViewBag.Error সেট হতো না, তাই ফর্ম ভ্যালিডেশন ব্যর্থ হলেও
+                // ইউজার কোনো বার্তা ছাড়াই একই ফর্মে ফিরে যেত। এখন আসল কারণ দেখানো হচ্ছে।
+                ViewBag.Error = errors.Any()
+                    ? "Please fix the following: " + string.Join(" ", errors)
+                    : "Please fill in all required fields correctly.";
             }
 
             return View(model);

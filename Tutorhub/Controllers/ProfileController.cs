@@ -88,24 +88,45 @@ namespace Tutorbub.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            if (ModelState.IsValid)
+            // এই ফর্মে শুধু FullName, Email, MobileNumber পোস্ট হয় — বাকি সব
+            // UserProfileViewModel প্রপার্টি (Gender, Country, EducationLevel ইত্যাদি)
+            // এই request-এ থাকেই না। আগে পুরো মডেলের ModelState.IsValid চেক করা হতো,
+            // যেটার ফলে ওই "অনুপস্থিত" ফিল্ডগুলোর কারণে validation সবসময় fail করত
+            // এবং Mobile Number ঠিকভাবে দিলেও নীরবে সেভ না হয়ে ফিরে যেত।
+            // তাই এখন শুধু এই সেকশনের প্রাসঙ্গিক ফিল্ডগুলো ম্যানুয়ালি ভ্যালিডেট করা হচ্ছে।
+            if (string.IsNullOrWhiteSpace(model.FullName))
             {
-                var user = _dbHelper.GetUserById(model.Id);
-                if (user != null)
-                {
-                    user.FullName = model.FullName;
-                    user.Email = model.Email;
-                    user.MobileNumber = model.MobileNumber;
-
-                    if (_dbHelper.UpdateUserProfile(user))
-                    {
-                        HttpContext.Session.SetString("UserFullName", user.FullName);
-                        TempData["Success"] = "Basic information updated successfully!";
-                        return RedirectToAction("Index", new { section = "basic" });
-                    }
-                }
-                ViewBag.Error = "Failed to update profile.";
+                TempData["Error"] = "Full Name is required.";
+                return RedirectToAction("Index", new { section = "basic" });
             }
+
+            if (string.IsNullOrWhiteSpace(model.Email))
+            {
+                TempData["Error"] = "Email is required.";
+                return RedirectToAction("Index", new { section = "basic" });
+            }
+
+            var user = _dbHelper.GetUserById(model.Id);
+            if (user != null)
+            {
+                user.FullName = model.FullName;
+                user.Email = model.Email;
+                user.MobileNumber = model.MobileNumber;
+
+                if (_dbHelper.UpdateUserProfile(user))
+                {
+                    HttpContext.Session.SetString("UserFullName", user.FullName);
+                    TempData["Success"] = "Basic information updated successfully!";
+                    return RedirectToAction("Index", new { section = "basic" });
+                }
+
+                TempData["Error"] = "Failed to update profile.";
+            }
+            else
+            {
+                TempData["Error"] = "User not found.";
+            }
+
             return RedirectToAction("Index", new { section = "basic" });
         }
 

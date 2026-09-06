@@ -429,8 +429,11 @@ namespace Tutorbub.Models
         // ============================================================
 
         // ===== Teacher Request তৈরি করা =====
-        public bool CreateTeacherRequest(TeacherRequest request)
+        // errorMessage আউট প্যারামিটারে আসল exception message পাঠানো হয়, যাতে UI-তে
+        // দেখানো যায় ঠিক কী কারণে insert ব্যর্থ হয়েছে (যেমন: টেবিল নেই, কলাম টাইপ মিসম্যাচ ইত্যাদি)।
+        public bool CreateTeacherRequest(TeacherRequest request, out string? errorMessage)
         {
+            errorMessage = null;
             string query = @"
                 INSERT INTO ""TeacherRequests"" 
                 (""UserId"", ""FullName"", ""Email"", ""MobileNumber"", ""Education"", ""Institution"", 
@@ -471,6 +474,7 @@ namespace Tutorbub.Models
             {
                 Console.WriteLine("Error creating teacher request: " + ex.Message);
                 Console.WriteLine("Stack trace: " + ex.StackTrace);
+                errorMessage = ex.Message;
                 return false;
             }
         }
