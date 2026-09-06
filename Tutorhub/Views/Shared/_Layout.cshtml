@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -282,7 +282,8 @@
                 <!-- Desktop Menu -->
                 <div class="hidden lg:flex items-center gap-7 xl:gap-8">
                     <a asp-controller="Home" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Home</a>
-                    <a href="#how-it-works" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Learn</a>
+                    <!-- Learn - এখন Learn Controller এ指向 -->
+                    <a asp-controller="Learn" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Learn</a>
                     <a href="#key-features" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Practice</a>
                     <a href="#knowledge-mastery-graph" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Progress</a>
                     <a href="#need-a-tutor" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Leaderboard</a>
@@ -337,7 +338,8 @@
             <div id="mobileMenu" class="hidden lg:hidden pb-5">
                 <div class="flex flex-col gap-4">
                     <a asp-controller="Home" asp-action="Index" class="text-sm" style="color:#4B5648;">Home</a>
-                    <a href="#how-it-works" class="text-sm" style="color:#4B5648;">Learn</a>
+                    <!-- Learn - মোবাইল মেনুতে আপডেট -->
+                    <a asp-controller="Learn" asp-action="Index" class="text-sm" style="color:#4B5648;">Learn</a>
                     <a href="#key-features" class="text-sm" style="color:#4B5648;">Practice</a>
                     <a href="#knowledge-mastery-graph" class="text-sm" style="color:#4B5648;">Progress</a>
                     <a href="#need-a-tutor" class="text-sm" style="color:#4B5648;">Leaderboard</a>
