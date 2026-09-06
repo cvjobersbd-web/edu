@@ -1,5 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// 📁 Controllers/AdminController.cs
+// লোকেশন: Tutorbub/Controllers/AdminController.cs
+
+using Microsoft.AspNetCore.Mvc;
 using Tutorbub.Models;
+using System;
 
 namespace Tutorbub.Controllers
 {
@@ -22,10 +26,15 @@ namespace Tutorbub.Controllers
             }
 
             var users = _dbHelper.GetAllUsers();
+            var requests = _dbHelper.GetAllTeacherRequests();
+            var pendingCount = requests.Count(r => r.Status == "Pending");
+
+            ViewBag.UserCount = users.Count;
+            ViewBag.PendingCount = pendingCount;
             return View(users);
         }
 
-        // ===== ইউজার ডিটেইলস (সম্পূর্ণ প্রোফাইল সহ) =====
+        // ===== ইউজার ডিটেইলস =====
         [HttpGet]
         public IActionResult UserDetails(int id)
         {
@@ -146,6 +155,104 @@ namespace Tutorbub.Controllers
                 return Json(new { success = true, message = "Password updated successfully" });
             }
             return Json(new { success = false, message = "Failed to update password" });
+        }
+
+        // ===== Teacher Request দেখা =====
+        public IActionResult TeacherRequests()
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var requests = _dbHelper.GetAllTeacherRequests();
+            var users = _dbHelper.GetAllUsers();
+            ViewBag.UserCount = users.Count;
+            ViewBag.PendingCount = requests.Count(r => r.Status == "Pending");
+
+            Console.WriteLine($"Total Teacher Requests: {requests.Count}");
+            foreach (var req in requests)
+            {
+                Console.WriteLine($"Request: {req.FullName} - {req.Status} - {req.RequestDate}");
+            }
+
+            return View(requests);
+        }
+
+        // ===== Teacher Request অ্যাপ্রুভ/রিজেক্ট =====
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ProcessTeacherRequest(int id, string action, string? adminNote)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return Json(new { success = false, message = "Unauthorized" });
+            }
+
+            if (action != "Approve" && action != "Reject")
+            {
+                return Json(new { success = false, message = "Invalid action" });
+            }
+
+            var status = action == "Approve" ? "Approved" : "Rejected";
+
+            if (_dbHelper.UpdateTeacherRequest(id, status, adminNote))
+            {
+                if (action == "Approve")
+                {
+                    var request = _dbHelper.GetTeacherRequestById(id);
+                    if (request != null)
+                    {
+                        _dbHelper.MakeUserTeacher(request.UserId);
+                    }
+                }
+                return Json(new { success = true, message = $"Teacher request {action.ToLower()}d successfully" });
+            }
+            return Json(new { success = false, message = "Failed to process request" });
+        }
+
+        // ===== Teacher Request ডিটেইলস =====
+        [HttpGet]
+        public IActionResult GetTeacherRequestDetails(int id)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return Json(new { success = false, message = "Unauthorized" });
+            }
+
+            var request = _dbHelper.GetTeacherRequestById(id);
+            if (request != null)
+            {
+                return Json(new
+                {
+                    success = true,
+                    request = new
+                    {
+                        request.Id,
+                        request.UserId,
+                        request.FullName,
+                        request.Email,
+                        request.MobileNumber,
+                        request.Education,
+                        request.Institution,
+                        request.SubjectExpertise,
+                        request.Experience,
+                        request.TeachingStyle,
+                        request.AvailableDays,
+                        request.PreferredTime,
+                        request.HourlyRate,
+                        request.CvLink,
+                        request.WhyTeach,
+                        request.Status,
+                        RequestDate = request.RequestDate.ToString("dd MMM yyyy, HH:mm"),
+                        request.AdminNote
+                    }
+                });
+            }
+            return Json(new { success = false, message = "Request not found" });
         }
     }
 }

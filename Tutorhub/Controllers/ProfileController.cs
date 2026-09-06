@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// 📁 Controllers/ProfileController.cs
+using Microsoft.AspNetCore.Mvc;
 using Tutorbub.Models;
 using System;
 using System.IO;
@@ -98,7 +99,6 @@ namespace Tutorbub.Controllers
 
                     if (_dbHelper.UpdateUserProfile(user))
                     {
-                        // সেশন আপডেট
                         HttpContext.Session.SetString("UserFullName", user.FullName);
                         TempData["Success"] = "Basic information updated successfully!";
                         return RedirectToAction("Index", new { section = "basic" });
@@ -246,11 +246,9 @@ namespace Tutorbub.Controllers
 
             try
             {
-                // ফাইলের নাম জেনারেট
                 var fileName = $"{userId}_{DateTime.Now.Ticks}{Path.GetExtension(profileImage.FileName)}";
                 var uploadPath = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "profiles");
 
-                // ডিরেক্টরি তৈরি করুন
                 if (!Directory.Exists(uploadPath))
                 {
                     Directory.CreateDirectory(uploadPath);
@@ -258,13 +256,11 @@ namespace Tutorbub.Controllers
 
                 var filePath = Path.Combine(uploadPath, fileName);
 
-                // ফাইল সেভ
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await profileImage.CopyToAsync(stream);
                 }
 
-                // ডেটাবেস আপডেট
                 var user = _dbHelper.GetUserById(int.Parse(userId));
                 if (user != null)
                 {
@@ -284,7 +280,7 @@ namespace Tutorbub.Controllers
             }
         }
 
-        // ===== Get User Profile Data for AJAX =====
+        // ===== Get Profile Data =====
         [HttpGet]
         public IActionResult GetProfileData()
         {
@@ -337,6 +333,36 @@ namespace Tutorbub.Controllers
                     user.Role
                 }
             });
+        }
+
+        // ===== Get Teacher Request Status =====
+        [HttpGet]
+        public IActionResult GetTeacherRequestStatus()
+        {
+            if (HttpContext.Session.GetString("UserName") == null)
+            {
+                return Json(new { success = false, isTeacher = false, status = "None" });
+            }
+
+            var userId = int.Parse(HttpContext.Session.GetString("UserId") ?? "0");
+            if (userId == 0)
+            {
+                return Json(new { success = false, isTeacher = false, status = "None" });
+            }
+
+            var user = _dbHelper.GetUserById(userId);
+            if (user == null)
+            {
+                return Json(new { success = false, isTeacher = false, status = "None" });
+            }
+
+            if (user.Role == "Teacher")
+            {
+                return Json(new { success = true, isTeacher = true, status = "Approved" });
+            }
+
+            var requestStatus = _dbHelper.GetUserTeacherRequestStatus(userId);
+            return Json(new { success = true, isTeacher = false, status = requestStatus });
         }
     }
 }

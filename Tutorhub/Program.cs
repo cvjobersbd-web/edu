@@ -1,3 +1,4 @@
+// 📁 Program.cs
 using Tutorbub;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,4 +43,10 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.Run(); 
+// ===== Teacher Controller Route =====
+app.MapControllerRoute(
+    name: "teacher",
+    pattern: "Teacher/{action=TeacherDashboard}/{id?}",
+    defaults: new { controller = "Teacher" });
+
+app.Run();

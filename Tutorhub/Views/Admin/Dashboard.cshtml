@@ -1,8 +1,23 @@
-﻿@model List<Tutorbub.Models.User>
+﻿<!-- 📁 Views/Admin/Dashboard.cshtml -->
+<!-- লোকেশন: Tutorbub/Views/Admin/Dashboard.cshtml -->
+
+@model List<Tutorbub.Models.User>
 
 @{
     ViewData["Title"] = "Admin Dashboard";
     Layout = "_Layout";
+    
+    // পেন্ডিং টিচার রিকোয়েস্ট কাউন্ট
+    var pendingCount = 0;
+    try
+    {
+        var configuration = Context.RequestServices.GetService<IConfiguration>();
+        var dbHelper = new Tutorbub.Models.DatabaseHelper(configuration);
+        var requests = dbHelper.GetAllTeacherRequests();
+        pendingCount = requests.Count(r => r.Status == "Pending");
+    }
+    catch { }
+    ViewBag.PendingCount = pendingCount;
 }
 
 <style>
@@ -372,10 +387,12 @@
                 <span class="badge-sidebar">@Model.Count</span>
             </a>
         </li>
+        <!-- ===== Users বাটন রিমুভ করা হয়েছে ===== -->
+        <!-- ===== Teacher Request বাটন যোগ করা হয়েছে ===== -->
         <li>
-            <a href="#" onclick="loadContent('users')">
-                <i class="fas fa-users"></i> Users
-                <span class="badge-sidebar">@Model.Count</span>
+            <a asp-controller="Admin" asp-action="TeacherRequests">
+                <i class="fas fa-user-graduate"></i> Teacher Requests
+                <span class="badge-sidebar" style="background-color:#F4C744; color:#1F3B2C;">@ViewBag.PendingCount</span>
             </a>
         </li>
         <li>
@@ -526,7 +543,7 @@
                                 <td>@user.Email</td>
                                 <td>
                                     @{
-                                        var roleClass = user.Role == "Admin" ? "bg-warning" : "bg-secondary";
+                                        var roleClass = user.Role == "Admin" ? "bg-warning" : (user.Role == "Teacher" ? "bg-info" : "bg-secondary");
                                     }
                                     <span class="badge @roleClass">
                                         @user.Role
@@ -787,7 +804,7 @@
                     if (data.success) {
                         var u = data.user;
                         var profileImage = u.profileImageLink || 'https://i.ibb.co/fd9sY88Y/IMG-6916-1.png';
-                        var roleBadge = u.role == 'Admin' ? 'bg-warning' : 'bg-secondary';
+                        var roleBadge = u.role == 'Admin' ? 'bg-warning' : (u.role == 'Teacher' ? 'bg-info' : 'bg-secondary');
                         var statusBadge = u.isActive ? 'bg-success' : 'bg-danger';
                         var statusText = u.isActive ? 'Active' : 'Inactive';
                         var notProvided = 'Not provided';

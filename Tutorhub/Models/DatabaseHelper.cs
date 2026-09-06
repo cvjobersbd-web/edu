@@ -1,4 +1,7 @@
-﻿using System;
+﻿// 📁 DatabaseHelper.cs
+// লোকেশন: Tutorbub/DatabaseHelper.cs
+
+using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -418,6 +421,218 @@ namespace Tutorbub.Models
             catch (Exception ex)
             {
                 throw new Exception("Error updating last login: " + ex.Message);
+            }
+        }
+
+        // ============================================================
+        // ===== TEACHER REQUEST RELATED METHODS =====
+        // ============================================================
+
+        // ===== Teacher Request তৈরি করা =====
+        public bool CreateTeacherRequest(TeacherRequest request)
+        {
+            string query = @"
+                INSERT INTO ""TeacherRequests"" 
+                (""UserId"", ""FullName"", ""Email"", ""MobileNumber"", ""Education"", ""Institution"", 
+                 ""SubjectExpertise"", ""Experience"", ""TeachingStyle"", ""AvailableDays"", ""PreferredTime"", 
+                 ""HourlyRate"", ""CvLink"", ""WhyTeach"", ""Status"", ""RequestDate"")
+                VALUES 
+                (@userId, @fullName, @email, @mobileNumber, @education, @institution, 
+                 @subjectExpertise, @experience, @teachingStyle, @availableDays, @preferredTime, 
+                 @hourlyRate, @cvLink, @whyTeach, 'Pending', @requestDate)";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@userId", request.UserId);
+                command.Parameters.AddWithValue("@fullName", request.FullName ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@email", request.Email ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@mobileNumber", request.MobileNumber ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@education", request.Education ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@institution", request.Institution ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@subjectExpertise", request.SubjectExpertise ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@experience", request.Experience ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@teachingStyle", request.TeachingStyle ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@availableDays", request.AvailableDays ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@preferredTime", request.PreferredTime ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@hourlyRate", request.HourlyRate ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@cvLink", request.CvLink ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@whyTeach", request.WhyTeach ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@requestDate", request.RequestDate);
+
+                connection.Open();
+                int result = command.ExecuteNonQuery();
+                Console.WriteLine($"CreateTeacherRequest: {result} rows affected, UserId: {request.UserId}");
+                return result > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error creating teacher request: " + ex.Message);
+                Console.WriteLine("Stack trace: " + ex.StackTrace);
+                return false;
+            }
+        }
+
+        // ===== ইউজারের টিচার রিকোয়েস্ট স্ট্যাটাস চেক করা =====
+        public string GetUserTeacherRequestStatus(int userId)
+        {
+            string query = @"SELECT ""Status"" FROM ""TeacherRequests"" 
+                             WHERE ""UserId"" = @userId 
+                             ORDER BY ""RequestDate"" DESC LIMIT 1";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+
+                var result = command.ExecuteScalar();
+                return result?.ToString() ?? "None";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting teacher request status: " + ex.Message);
+                return "None";
+            }
+        }
+
+        // ===== সব Teacher Request পাওয়া =====
+        public List<TeacherRequest> GetAllTeacherRequests()
+        {
+            var requests = new List<TeacherRequest>();
+            string query = @"SELECT * FROM ""TeacherRequests"" ORDER BY ""RequestDate"" DESC";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                connection.Open();
+                using var reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    requests.Add(new TeacherRequest
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
+                        Email = reader["Email"]?.ToString() ?? string.Empty,
+                        MobileNumber = reader["MobileNumber"]?.ToString() ?? string.Empty,
+                        Education = reader["Education"]?.ToString() ?? string.Empty,
+                        Institution = reader["Institution"]?.ToString() ?? string.Empty,
+                        SubjectExpertise = reader["SubjectExpertise"]?.ToString() ?? string.Empty,
+                        Experience = reader["Experience"]?.ToString() ?? string.Empty,
+                        TeachingStyle = reader["TeachingStyle"]?.ToString() ?? string.Empty,
+                        AvailableDays = reader["AvailableDays"]?.ToString() ?? string.Empty,
+                        PreferredTime = reader["PreferredTime"]?.ToString() ?? string.Empty,
+                        HourlyRate = reader["HourlyRate"]?.ToString() ?? string.Empty,
+                        CvLink = reader["CvLink"]?.ToString() ?? string.Empty,
+                        WhyTeach = reader["WhyTeach"]?.ToString() ?? string.Empty,
+                        Status = reader["Status"]?.ToString() ?? "Pending",
+                        RequestDate = reader["RequestDate"] as DateTime? ?? DateTime.UtcNow,
+                        ResponseDate = reader["ResponseDate"] as DateTime?,
+                        AdminNote = reader["AdminNote"]?.ToString()
+                    });
+                }
+                Console.WriteLine($"GetAllTeacherRequests: {requests.Count} requests found");
+                return requests;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting teacher requests: " + ex.Message);
+                throw new Exception("Error getting teacher requests: " + ex.Message);
+            }
+        }
+
+        // ===== Teacher Request আপডেট করা =====
+        public bool UpdateTeacherRequest(int requestId, string status, string? adminNote)
+        {
+            string query = @"UPDATE ""TeacherRequests"" 
+                             SET ""Status"" = @status, ""ResponseDate"" = @responseDate, ""AdminNote"" = @adminNote
+                             WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@status", status);
+                command.Parameters.AddWithValue("@responseDate", DateTime.UtcNow);
+                command.Parameters.AddWithValue("@adminNote", adminNote ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@id", requestId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error updating teacher request: " + ex.Message);
+            }
+        }
+
+        // ===== Teacher Request দ্বারা ইউজার পাওয়া =====
+        public TeacherRequest? GetTeacherRequestById(int requestId)
+        {
+            string query = @"SELECT * FROM ""TeacherRequests"" WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", requestId);
+                connection.Open();
+                using var reader = command.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    return new TeacherRequest
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
+                        Email = reader["Email"]?.ToString() ?? string.Empty,
+                        MobileNumber = reader["MobileNumber"]?.ToString() ?? string.Empty,
+                        Education = reader["Education"]?.ToString() ?? string.Empty,
+                        Institution = reader["Institution"]?.ToString() ?? string.Empty,
+                        SubjectExpertise = reader["SubjectExpertise"]?.ToString() ?? string.Empty,
+                        Experience = reader["Experience"]?.ToString() ?? string.Empty,
+                        TeachingStyle = reader["TeachingStyle"]?.ToString() ?? string.Empty,
+                        AvailableDays = reader["AvailableDays"]?.ToString() ?? string.Empty,
+                        PreferredTime = reader["PreferredTime"]?.ToString() ?? string.Empty,
+                        HourlyRate = reader["HourlyRate"]?.ToString() ?? string.Empty,
+                        CvLink = reader["CvLink"]?.ToString() ?? string.Empty,
+                        WhyTeach = reader["WhyTeach"]?.ToString() ?? string.Empty,
+                        Status = reader["Status"]?.ToString() ?? "Pending",
+                        RequestDate = reader["RequestDate"] as DateTime? ?? DateTime.UtcNow,
+                        ResponseDate = reader["ResponseDate"] as DateTime?,
+                        AdminNote = reader["AdminNote"]?.ToString()
+                    };
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error getting teacher request: " + ex.Message);
+            }
+        }
+
+        // ===== ইউজারকে টিচার বানানো =====
+        public bool MakeUserTeacher(int userId)
+        {
+            string query = @"UPDATE ""Users"" SET ""Role"" = 'Teacher' WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", userId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error making user teacher: " + ex.Message);
             }
         }
     }
