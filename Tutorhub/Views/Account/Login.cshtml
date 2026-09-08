@@ -1,12 +1,52 @@
-﻿﻿@{
-ViewData["Title"] = "Login";
-Layout = "_Layout";
+﻿@{
+    ViewData["Title"] = "Login";
+    Layout = "_Layout";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
+<style>
+    .card-transparent {
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+        .card-transparent .card-body {
+            background-color: transparent;
+        }
+
+    .form-control-transparent {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(25, 135, 84, 0.4);
+        color: #1c1c1c;
+        transition: all 0.2s ease;
+    }
+
+        .form-control-transparent::placeholder {
+            color: rgba(0, 0, 0, 0.45);
+        }
+
+        .form-control-transparent:focus {
+            background-color: rgba(255, 255, 255, 0.3) !important;
+            border-color: #198754;
+            box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+            color: #1c1c1c;
+        }
+
+        /* Stop Chrome/Edge from painting autofilled fields solid white/blue */
+        .form-control-transparent:-webkit-autofill,
+        .form-control-transparent:-webkit-autofill:hover,
+        .form-control-transparent:-webkit-autofill:focus {
+            -webkit-text-fill-color: #1c1c1c;
+            transition: background-color 9999s ease-in-out 0s;
+            box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.15) inset;
+        }
+</style>
+
+<div class="container-fluid py-5" style="background-image: url('https://i.ibb.co.com/LKVKbm5/hero-20-bg.avif'); background-size: cover; background-position: center; min-height: 80vh; display: flex; align-items: center;">
+    <div class="row justify-content-center w-100">
         <div class="col-md-4">
-            <div class="card shadow">
+            <div class="card shadow card-transparent">
                 <div class="card-header bg-success text-white text-center">
                     <h4>Login</h4>
                 </div>
@@ -24,11 +64,11 @@ Layout = "_Layout";
                         @Html.AntiForgeryToken()
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input name="username" type="text" class="form-control" required />
+                            <input name="username" type="text" class="form-control form-control-transparent" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input name="password" type="password" class="form-control" required />
+                            <input name="password" type="password" class="form-control form-control-transparent" required />
                         </div>
                         <button type="submit" class="btn btn-success w-100">Login</button>
                     </form>

@@ -1,12 +1,52 @@
-﻿﻿@{
+﻿@{
     ViewData["Title"] = "Register";
     Layout = "_Layout";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
+<style>
+    .card-transparent {
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+        .card-transparent .card-body {
+            background-color: transparent;
+        }
+
+    .form-control-transparent {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(13, 110, 253, 0.4);
+        color: #1c1c1c;
+        transition: all 0.2s ease;
+    }
+
+        .form-control-transparent::placeholder {
+            color: rgba(0, 0, 0, 0.45);
+        }
+
+        .form-control-transparent:focus {
+            background-color: rgba(255, 255, 255, 0.3) !important;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            color: #1c1c1c;
+        }
+
+        /* Stop Chrome/Edge from painting autofilled fields solid white/blue */
+        .form-control-transparent:-webkit-autofill,
+        .form-control-transparent:-webkit-autofill:hover,
+        .form-control-transparent:-webkit-autofill:focus {
+            -webkit-text-fill-color: #1c1c1c;
+            transition: background-color 9999s ease-in-out 0s;
+            box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.15) inset;
+        }
+</style>
+
+<div class="container-fluid py-5" style="background-image: url('https://i.ibb.co.com/LKVKbm5/hero-20-bg.avif'); background-size: cover; background-position: center; min-height: 80vh; display: flex; align-items: center;">
+    <div class="row justify-content-center w-100">
         <div class="col-md-4">
-            <div class="card shadow">
+            <div class="card shadow card-transparent">
                 <div class="card-header bg-primary text-white text-center">
                     <h4>Register</h4>
                 </div>
@@ -20,24 +60,24 @@
                         @Html.AntiForgeryToken()
                         <div class="mb-3">
                             <label class="form-label">Full Name</label>
-                            <input name="fullName" type="text" class="form-control" required />
+                            <input name="fullName" type="text" class="form-control form-control-transparent" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input name="username" type="text" class="form-control" required />
+                            <input name="username" type="text" class="form-control form-control-transparent" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input name="email" type="email" class="form-control" required />
+                            <input name="email" type="email" class="form-control form-control-transparent" required />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input name="password" type="password" class="form-control" required />
+                            <input name="password" type="password" class="form-control form-control-transparent" required />
                             <small class="text-muted">Minimum 6 characters</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Confirm Password</label>
-                            <input name="confirmPassword" type="password" class="form-control" required />
+                            <input name="confirmPassword" type="password" class="form-control form-control-transparent" required />
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Register</button>
                     </form>
