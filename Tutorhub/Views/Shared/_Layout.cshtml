@@ -1,4 +1,5 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -282,11 +283,13 @@
                 <!-- Desktop Menu -->
                 <div class="hidden lg:flex items-center gap-7 xl:gap-8">
                     <a asp-controller="Home" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Home</a>
-                    <!-- Learn - এখন Learn Controller এ指向 -->
                     <a asp-controller="Learn" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Learn</a>
-                    <a href="#key-features" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Practice</a>
-                    <a href="#knowledge-mastery-graph" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Progress</a>
-                    <a href="#need-a-tutor" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Leaderboard</a>
+                    <!-- ===== Practice মেনু যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Practice" asp-action="Index" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Practice</a>
+                    <!-- ===== Progress মেনু যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Progress" asp-action="Progress" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Progress</a>
+                    <!-- ===== Leaderboard মেনু যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Leaderboard" asp-action="Leaderboard" class="text-sm font-medium transition hover:opacity-70" style="color:#4B5648;">Leaderboard</a>
                 </div>
 
                 <!-- Desktop Right Side - Login/User (Register রিমুভ করা হয়েছে) -->
@@ -296,7 +299,7 @@
                         <div class="flex items-center gap-3">
                             @if (Context.Session.GetString("UserRole") == "Teacher")
                             {
-                                <!-- ===== Teacher Dashboard লিংক যোগ করা হয়েছে ===== -->
+                                <!-- ===== Teacher Dashboard লিংক ===== -->
                                 <a asp-controller="Teacher" asp-action="TeacherDashboard" class="profile-link text-sm font-medium">
                                     <i class="fas fa-chart-pie me-1"></i> Teacher Dashboard
                                 </a>
@@ -345,11 +348,13 @@
             <div id="mobileMenu" class="hidden lg:hidden pb-5">
                 <div class="flex flex-col gap-4">
                     <a asp-controller="Home" asp-action="Index" class="text-sm" style="color:#4B5648;">Home</a>
-                    <!-- Learn - মোবাইল মেনুতে আপডেট -->
                     <a asp-controller="Learn" asp-action="Index" class="text-sm" style="color:#4B5648;">Learn</a>
-                    <a href="#key-features" class="text-sm" style="color:#4B5648;">Practice</a>
-                    <a href="#knowledge-mastery-graph" class="text-sm" style="color:#4B5648;">Progress</a>
-                    <a href="#need-a-tutor" class="text-sm" style="color:#4B5648;">Leaderboard</a>
+                    <!-- ===== Practice মোবাইল মেনুতে যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Practice" asp-action="Index" class="text-sm" style="color:#4B5648;">Practice</a>
+                    <!-- ===== Progress মোবাইল মেনুতে যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Progress" asp-action="Progress" class="text-sm" style="color:#4B5648;">Progress</a>
+                    <!-- ===== Leaderboard মোবাইল মেনুতে যোগ করা হয়েছে ===== -->
+                    <a asp-controller="Leaderboard" asp-action="Leaderboard" class="text-sm" style="color:#4B5648;">Leaderboard</a>
 
                     <hr class="border-black/5" />
 
@@ -358,7 +363,7 @@
                         <div class="flex flex-col gap-2">
                             @if (Context.Session.GetString("UserRole") == "Teacher")
                             {
-                                <!-- ===== Mobile Menu তে Teacher Dashboard লিংক যোগ করা হয়েছে ===== -->
+                                <!-- ===== Mobile Menu তে Teacher Dashboard লিংক ===== -->
                                 <a asp-controller="Teacher" asp-action="TeacherDashboard" class="text-sm font-medium" style="color:#1F3B2C;">
                                     <i class="fas fa-chart-pie me-1"></i> Teacher Dashboard
                                 </a>

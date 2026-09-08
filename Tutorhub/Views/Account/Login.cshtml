@@ -41,6 +41,21 @@
             transition: background-color 9999s ease-in-out 0s;
             box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.15) inset;
         }
+
+        .form-control-transparent.is-invalid {
+            border-color: #dc3545 !important;
+            background-color: rgba(220, 53, 69, 0.1) !important;
+        }
+
+    .invalid-feedback {
+        display: none;
+        font-size: 0.8rem;
+        margin-top: 4px;
+    }
+
+    .form-control-transparent.is-invalid ~ .invalid-feedback {
+        display: block;
+    }
 </style>
 
 <div class="container-fluid py-5" style="background-image: url('https://i.ibb.co.com/LKVKbm5/hero-20-bg.avif'); background-size: cover; background-position: center; min-height: 80vh; display: flex; align-items: center;">
@@ -60,15 +75,17 @@
                         <div class="alert alert-success">@TempData["Success"]</div>
                     }
 
-                    <form method="post" asp-controller="Account" asp-action="Login">
+                    <form method="post" asp-controller="Account" asp-action="Login" id="loginForm" novalidate>
                         @Html.AntiForgeryToken()
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input name="username" type="text" class="form-control form-control-transparent" required />
+                            <input name="username" id="loginUsername" type="text" class="form-control form-control-transparent" required />
+                            <div class="invalid-feedback">Please enter your username.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input name="password" type="password" class="form-control form-control-transparent" required />
+                            <input name="password" id="loginPassword" type="password" class="form-control form-control-transparent" required />
+                            <div class="invalid-feedback">Please enter your password.</div>
                         </div>
                         <button type="submit" class="btn btn-success w-100">Login</button>
                     </form>
@@ -81,3 +98,30 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function() {
+        const form = document.getElementById('loginForm');
+        const username = document.getElementById('loginUsername');
+        const password = document.getElementById('loginPassword');
+
+        function markField(input) {
+            const valid = input.value.trim().length > 0;
+            input.classList.toggle('is-invalid', !valid);
+            return valid;
+        }
+
+        [username, password].forEach(function(el) {
+            el.addEventListener('input', function() { markField(el); });
+        });
+
+        form.addEventListener('submit', function(e) {
+            const validUsername = markField(username);
+            const validPassword = markField(password);
+            if (!(validUsername && validPassword)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
+</script>
