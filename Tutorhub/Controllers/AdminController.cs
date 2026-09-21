@@ -559,6 +559,144 @@ namespace Tutorbub.Controllers
         }
 
         // ============================================================
+        // ===== UPLOAD COURSE LESSON VIDEO (নতুন) =====
+        // ============================================================
+
+        [HttpGet]
+        public IActionResult UploadLesson(int courseId)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var course = _dbHelper.GetCourseById(courseId);
+            if (course == null)
+            {
+                TempData["Error"] = "Course not found.";
+                return RedirectToAction("ManageCourses");
+            }
+
+            ViewBag.Course = course;
+            var lessons = _dbHelper.GetLessonsByCourseId(courseId);
+            ViewBag.Lessons = lessons;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult UploadLesson(int courseId, int moduleNumber, int lessonNumber,
+            string title, string duration, string? description, string? videoUrl)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return Json(new { success = false, message = "Unauthorized" });
+            }
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return Json(new { success = false, message = "Lesson title is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(videoUrl))
+            {
+                return Json(new { success = false, message = "Video URL is required." });
+            }
+
+            var lesson = new CourseLesson
+            {
+                CourseId = courseId,
+                ModuleNumber = moduleNumber,
+                LessonNumber = lessonNumber,
+                Title = title.Trim(),
+                VideoUrl = videoUrl.Trim(),
+                Duration = duration?.Trim() ?? "",
+                Description = description?.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            if (_dbHelper.CreateCourseLesson(lesson, out string? error))
+            {
+                return Json(new { success = true, message = "Lesson uploaded successfully!" });
+            }
+
+            return Json(new { success = false, message = $"Failed to save lesson: {error}" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteLesson(int id)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return Json(new { success = false, message = "Unauthorized" });
+            }
+
+            if (_dbHelper.DeleteCourseLesson(id))
+            {
+                return Json(new { success = true, message = "Lesson deleted successfully." });
+            }
+            return Json(new { success = false, message = "Failed to delete lesson." });
+        }
+
+        // ===== Upload Video File =====
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadLessonVideo(IFormFile lessonVideo)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (role != "Admin")
+            {
+                return Json(new { success = false, message = "Unauthorized" });
+            }
+
+            if (lessonVideo == null || lessonVideo.Length == 0)
+            {
+                return Json(new { success = false, message = "Please select a video file." });
+            }
+
+            var allowedExtensions = new[] { ".mp4", ".webm", ".ogg", ".mov", ".avi", ".mkv" };
+            var extension = Path.GetExtension(lessonVideo.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(extension))
+            {
+                return Json(new { success = false, message = "Only MP4, WEBM, OGG, MOV, AVI, or MKV videos are allowed." });
+            }
+
+            if (lessonVideo.Length > 500 * 1024 * 1024)
+            {
+                return Json(new { success = false, message = "Video size must be less than 500MB." });
+            }
+
+            try
+            {
+                var uploadPath = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "videos");
+                if (!Directory.Exists(uploadPath))
+                {
+                    Directory.CreateDirectory(uploadPath);
+                }
+
+                var fileName = $"lesson_{DateTime.Now.Ticks}{extension}";
+                var filePath = Path.Combine(uploadPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await lessonVideo.CopyToAsync(stream);
+                }
+
+                var videoUrl = $"/uploads/videos/{fileName}";
+                return Json(new { success = true, message = "Video uploaded successfully!", videoUrl });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // ============================================================
         // ===== MANAGE COURSES =====
         // ============================================================
 

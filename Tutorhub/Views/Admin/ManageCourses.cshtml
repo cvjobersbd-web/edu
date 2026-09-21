@@ -36,6 +36,26 @@
     .btn-delete { background: #fff; color: #e74c3c; border: 1.5px solid #e74c3c; }
     .btn-delete:hover { background: #f8d7da; }
 
+    .btn-upload-lesson {
+        background: #0d6efd;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.25s;
+        border: none;
+    }
+    .btn-upload-lesson:hover {
+        background: #0b5ed7;
+        color: white;
+        transform: translateY(-1px);
+    }
+
     @@media (max-width: 992px) {
         .admin-sidebar { transform: translateX(-100%); }
         .admin-sidebar.open { transform: translateX(0); }
@@ -81,6 +101,10 @@
     {
         <div class="alert alert-success">@TempData["Success"]</div>
     }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
 
     @Html.AntiForgeryToken()
 
@@ -114,6 +138,11 @@
                 </span>
 
                 <div class="actions">
+                    <!-- ✅ Upload Lesson Video বাটন -->
+                    <a asp-controller="Admin" asp-action="UploadLesson" asp-route-courseId="@course.Id" class="btn-upload-lesson">
+                        <i class="fas fa-video"></i> Upload Lesson
+                    </a>
+
                     @if (course.IsEnrollmentOpen)
                     {
                         <button class="btn-toggle open" onclick="toggleEnrollment(@course.Id, false, '@course.Title')">
@@ -172,7 +201,7 @@
         }
 
         function deleteCourse(courseId, title) {
-            if (!confirm(`⚠️ DELETE "${title}" permanently?\n\nThis will remove the course and all its orders. This action cannot be undone.`)) return;
+            if (!confirm(`⚠️ DELETE "${title}" permanently?\n\nThis will remove the course and all its lessons and orders. This action cannot be undone.`)) return;
 
             const formData = new FormData();
             formData.append('id', courseId);

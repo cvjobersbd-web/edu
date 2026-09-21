@@ -754,6 +754,13 @@ namespace Tutorbub.Models
                 using var connection = new NpgsqlConnection(_connectionString);
                 connection.Open();
 
+                using (var deleteLessons = new NpgsqlCommand(
+                    @"DELETE FROM ""CourseLessons"" WHERE ""CourseId"" = @id", connection))
+                {
+                    deleteLessons.Parameters.AddWithValue("@id", courseId);
+                    deleteLessons.ExecuteNonQuery();
+                }
+
                 using (var deleteOrders = new NpgsqlCommand(
                     @"DELETE FROM ""CourseOrders"" WHERE ""CourseId"" = @id", connection))
                 {
@@ -792,6 +799,109 @@ namespace Tutorbub.Models
             catch (Exception ex)
             {
                 Console.WriteLine("Error toggling enrollment: " + ex.Message);
+                return false;
+            }
+        }
+
+        // ============================================================
+        // ===== COURSE LESSON / VIDEO METHODS (নতুন) =====
+        // ============================================================
+
+        public bool CreateCourseLesson(CourseLesson lesson, out string? errorMessage)
+        {
+            errorMessage = null;
+            string query = @"
+                INSERT INTO ""CourseLessons"" 
+                (""CourseId"", ""ModuleNumber"", ""LessonNumber"", ""Title"", 
+                 ""VideoUrl"", ""Duration"", ""Description"", ""CreatedAt"")
+                VALUES 
+                (@courseId, @moduleNumber, @lessonNumber, @title,
+                 @videoUrl, @duration, @description, @createdAt)
+                RETURNING ""Id""";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@courseId", lesson.CourseId);
+                command.Parameters.AddWithValue("@moduleNumber", lesson.ModuleNumber);
+                command.Parameters.AddWithValue("@lessonNumber", lesson.LessonNumber);
+                command.Parameters.AddWithValue("@title", lesson.Title ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@videoUrl", lesson.VideoUrl ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@duration", lesson.Duration ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@description", lesson.Description ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@createdAt", lesson.CreatedAt);
+
+                connection.Open();
+                var result = command.ExecuteScalar();
+                if (result != null && int.TryParse(result.ToString(), out int newId))
+                {
+                    lesson.Id = newId;
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
+        }
+
+        public List<CourseLesson> GetLessonsByCourseId(int courseId)
+        {
+            var lessons = new List<CourseLesson>();
+            string query = @"SELECT * FROM ""CourseLessons"" 
+                             WHERE ""CourseId"" = @courseId 
+                             ORDER BY ""ModuleNumber"", ""LessonNumber""";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@courseId", courseId);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    lessons.Add(new CourseLesson
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        CourseId = reader.GetInt32(reader.GetOrdinal("CourseId")),
+                        ModuleNumber = Convert.ToInt32(reader["ModuleNumber"]),
+                        LessonNumber = Convert.ToInt32(reader["LessonNumber"]),
+                        Title = reader["Title"]?.ToString() ?? "",
+                        VideoUrl = reader["VideoUrl"]?.ToString() ?? "",
+                        Duration = reader["Duration"]?.ToString() ?? "",
+                        Description = reader["Description"]?.ToString(),
+                        CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow
+                    });
+                }
+                return lessons;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting lessons: " + ex.Message);
+                return new List<CourseLesson>();
+            }
+        }
+
+        public bool DeleteCourseLesson(int lessonId)
+        {
+            string query = "DELETE FROM \"CourseLessons\" WHERE \"Id\" = @id";
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", lessonId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error deleting lesson: " + ex.Message);
                 return false;
             }
         }
