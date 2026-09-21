@@ -1,10 +1,12 @@
-﻿// 📁 DatabaseHelper.cs
-// লোকেশন: Tutorbub/DatabaseHelper.cs
+﻿// 📁 Models/DatabaseHelper.cs
+// লোকেশন: Tutorbub/Models/DatabaseHelper.cs
 
-using System;
-using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using Tutorbub.Models;
 
 namespace Tutorbub.Models
@@ -19,7 +21,10 @@ namespace Tutorbub.Models
                 ?? throw new InvalidOperationException("Connection string 'Database' not found.");
         }
 
-        // ===== সব ইউজার আনা =====
+        // ============================================================
+        // ===== USER RELATED METHODS =====
+        // ============================================================
+
         public List<User> GetAllUsers()
         {
             var users = new List<User>();
@@ -44,39 +49,7 @@ namespace Tutorbub.Models
 
                 while (reader.Read())
                 {
-                    users.Add(new User
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        UserName = reader["UserName"]?.ToString() ?? string.Empty,
-                        Password = reader["Password"]?.ToString() ?? string.Empty,
-                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
-                        Email = reader["Email"]?.ToString() ?? string.Empty,
-                        CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow,
-                        LastLoginAt = reader["LastLoginAt"] as DateTime?,
-                        Role = reader["Role"]?.ToString() ?? "User",
-                        IsActive = reader["IsActive"] as bool? ?? true,
-                        MobileNumber = reader["MobileNumber"]?.ToString(),
-                        ProfileImage = reader["ProfileImage"]?.ToString(),
-                        Gender = reader["Gender"]?.ToString(),
-                        AgeRange = reader["AgeRange"]?.ToString(),
-                        PrimaryDeviceType = reader["PrimaryDeviceType"]?.ToString(),
-                        YearsOfExperience = reader["YearsOfExperience"]?.ToString(),
-                        AreaType = reader["AreaType"]?.ToString(),
-                        Country = reader["Country"]?.ToString(),
-                        StreetAddress = reader["StreetAddress"]?.ToString(),
-                        PermanentAddress = reader["PermanentAddress"]?.ToString(),
-                        EducationLevel = reader["EducationLevel"]?.ToString(),
-                        CurrentStudyStatus = reader["CurrentStudyStatus"]?.ToString(),
-                        ExamDegreeTitle = reader["ExamDegreeTitle"]?.ToString(),
-                        InstitutionName = reader["InstitutionName"]?.ToString(),
-                        PassingYear = reader["PassingYear"]?.ToString(),
-                        IsCSEStudent = reader["IsCSEStudent"] as bool?,
-                        CvLink = reader["CvLink"]?.ToString(),
-                        GithubProfile = reader["GithubProfile"]?.ToString(),
-                        PortfolioLink = reader["PortfolioLink"]?.ToString(),
-                        LinkedInProfile = reader["LinkedInProfile"]?.ToString(),
-                        ProfileImageLink = reader["ProfileImageLink"]?.ToString()
-                    });
+                    users.Add(MapUser(reader));
                 }
                 return users;
             }
@@ -86,7 +59,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজার অথেন্টিকেট করা =====
         public User? AuthenticateUser(string username, string password)
         {
             string query = @"
@@ -99,7 +71,9 @@ namespace Tutorbub.Models
                        ""InstitutionName"", ""PassingYear"", ""IsCSEStudent"",
                        ""CvLink"", ""GithubProfile"", ""PortfolioLink"", ""LinkedInProfile"", ""ProfileImageLink""
                 FROM ""Users""
-                WHERE ""UserName"" = @username AND ""Password"" = @password AND ""IsActive"" = TRUE";
+                WHERE LOWER(""UserName"") = LOWER(@username) 
+                  AND ""Password"" = @password 
+                  AND ""IsActive"" = TRUE";
 
             try
             {
@@ -112,39 +86,7 @@ namespace Tutorbub.Models
                 using var reader = command.ExecuteReader();
                 if (reader.Read())
                 {
-                    return new User
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        UserName = reader["UserName"]?.ToString() ?? string.Empty,
-                        Password = reader["Password"]?.ToString() ?? string.Empty,
-                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
-                        Email = reader["Email"]?.ToString() ?? string.Empty,
-                        CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow,
-                        LastLoginAt = reader["LastLoginAt"] as DateTime?,
-                        Role = reader["Role"]?.ToString() ?? "User",
-                        IsActive = reader["IsActive"] as bool? ?? true,
-                        MobileNumber = reader["MobileNumber"]?.ToString(),
-                        ProfileImage = reader["ProfileImage"]?.ToString(),
-                        Gender = reader["Gender"]?.ToString(),
-                        AgeRange = reader["AgeRange"]?.ToString(),
-                        PrimaryDeviceType = reader["PrimaryDeviceType"]?.ToString(),
-                        YearsOfExperience = reader["YearsOfExperience"]?.ToString(),
-                        AreaType = reader["AreaType"]?.ToString(),
-                        Country = reader["Country"]?.ToString(),
-                        StreetAddress = reader["StreetAddress"]?.ToString(),
-                        PermanentAddress = reader["PermanentAddress"]?.ToString(),
-                        EducationLevel = reader["EducationLevel"]?.ToString(),
-                        CurrentStudyStatus = reader["CurrentStudyStatus"]?.ToString(),
-                        ExamDegreeTitle = reader["ExamDegreeTitle"]?.ToString(),
-                        InstitutionName = reader["InstitutionName"]?.ToString(),
-                        PassingYear = reader["PassingYear"]?.ToString(),
-                        IsCSEStudent = reader["IsCSEStudent"] as bool?,
-                        CvLink = reader["CvLink"]?.ToString(),
-                        GithubProfile = reader["GithubProfile"]?.ToString(),
-                        PortfolioLink = reader["PortfolioLink"]?.ToString(),
-                        LinkedInProfile = reader["LinkedInProfile"]?.ToString(),
-                        ProfileImageLink = reader["ProfileImageLink"]?.ToString()
-                    };
+                    return MapUser(reader);
                 }
                 return null;
             }
@@ -154,7 +96,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজার প্রোফাইল আপডেট করা =====
         public bool UpdateUserProfile(User user)
         {
             string query = @"
@@ -221,7 +162,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজার আইডি দিয়ে খোঁজা =====
         public User? GetUserById(int userId)
         {
             string query = @"
@@ -246,39 +186,7 @@ namespace Tutorbub.Models
                 using var reader = command.ExecuteReader();
                 if (reader.Read())
                 {
-                    return new User
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        UserName = reader["UserName"]?.ToString() ?? string.Empty,
-                        Password = reader["Password"]?.ToString() ?? string.Empty,
-                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
-                        Email = reader["Email"]?.ToString() ?? string.Empty,
-                        CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow,
-                        LastLoginAt = reader["LastLoginAt"] as DateTime?,
-                        Role = reader["Role"]?.ToString() ?? "User",
-                        IsActive = reader["IsActive"] as bool? ?? true,
-                        MobileNumber = reader["MobileNumber"]?.ToString(),
-                        ProfileImage = reader["ProfileImage"]?.ToString(),
-                        Gender = reader["Gender"]?.ToString(),
-                        AgeRange = reader["AgeRange"]?.ToString(),
-                        PrimaryDeviceType = reader["PrimaryDeviceType"]?.ToString(),
-                        YearsOfExperience = reader["YearsOfExperience"]?.ToString(),
-                        AreaType = reader["AreaType"]?.ToString(),
-                        Country = reader["Country"]?.ToString(),
-                        StreetAddress = reader["StreetAddress"]?.ToString(),
-                        PermanentAddress = reader["PermanentAddress"]?.ToString(),
-                        EducationLevel = reader["EducationLevel"]?.ToString(),
-                        CurrentStudyStatus = reader["CurrentStudyStatus"]?.ToString(),
-                        ExamDegreeTitle = reader["ExamDegreeTitle"]?.ToString(),
-                        InstitutionName = reader["InstitutionName"]?.ToString(),
-                        PassingYear = reader["PassingYear"]?.ToString(),
-                        IsCSEStudent = reader["IsCSEStudent"] as bool?,
-                        CvLink = reader["CvLink"]?.ToString(),
-                        GithubProfile = reader["GithubProfile"]?.ToString(),
-                        PortfolioLink = reader["PortfolioLink"]?.ToString(),
-                        LinkedInProfile = reader["LinkedInProfile"]?.ToString(),
-                        ProfileImageLink = reader["ProfileImageLink"]?.ToString()
-                    };
+                    return MapUser(reader);
                 }
                 return null;
             }
@@ -288,9 +196,22 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== নতুন ইউজার রেজিস্টার =====
         public bool RegisterUser(User user)
         {
+            var trimmedEmail = (user.Email ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedEmail) ||
+                !trimmedEmail.EndsWith("@gmail.com"))
+            {
+                throw new Exception("Email must end with @gmail.com (all lowercase).");
+            }
+
+            var gmailRegex = new Regex(@"^[A-Za-z0-9._%+-]+@gmail\.com$");
+            if (!gmailRegex.IsMatch(trimmedEmail))
+            {
+                throw new Exception("Invalid Gmail address format.");
+            }
+
             string query = @"
                 INSERT INTO ""Users"" (""UserName"", ""Password"", ""FullName"", ""Email"", ""Role"")
                 VALUES (@username, @password, @fullname, @email, 'User')";
@@ -302,7 +223,7 @@ namespace Tutorbub.Models
                 command.Parameters.AddWithValue("@username", user.UserName);
                 command.Parameters.AddWithValue("@password", user.Password);
                 command.Parameters.AddWithValue("@fullname", user.FullName);
-                command.Parameters.AddWithValue("@email", user.Email);
+                command.Parameters.AddWithValue("@email", trimmedEmail);
 
                 connection.Open();
                 return command.ExecuteNonQuery() > 0;
@@ -313,10 +234,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজার ডিলিট (সম্পর্কিত Teacher Request সহ) =====
-        // ইউজার ডিলিট করার আগে তার সব TeacherRequests রো ডিলিট করা হয়, যাতে
-        // ফরেন কী কনস্ট্রেইন্টের কারণে ডিলিট ব্যর্থ না হয় (টিচার ডিলিট করলে
-        // তার রিকোয়েস্ট হিস্ট্রিও ডাটাবেজ থেকে মুছে যায়)।
         public bool DeleteUser(int userId)
         {
             using var connection = new NpgsqlConnection(_connectionString);
@@ -347,7 +264,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== পাসওয়ার্ড আপডেট =====
         public bool UpdatePassword(int userId, string newPassword)
         {
             string query = "UPDATE \"Users\" SET \"Password\" = @password WHERE \"Id\" = @id";
@@ -366,7 +282,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজার স্ট্যাটাস টগল =====
         public bool ToggleUserStatus(int userId, bool isActive)
         {
             string query = "UPDATE \"Users\" SET \"IsActive\" = @isActive WHERE \"Id\" = @id";
@@ -385,10 +300,9 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজারনেম চেক =====
         public bool UsernameExists(string username)
         {
-            string query = "SELECT COUNT(*) FROM \"Users\" WHERE \"UserName\" = @username";
+            string query = "SELECT COUNT(*) FROM \"Users\" WHERE LOWER(\"UserName\") = LOWER(@username)";
             try
             {
                 using var connection = new NpgsqlConnection(_connectionString);
@@ -403,15 +317,16 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইমেইল চেক =====
         public bool EmailExists(string email)
         {
-            string query = "SELECT COUNT(*) FROM \"Users\" WHERE \"Email\" = @email";
+            var trimmed = (email ?? string.Empty).Trim();
+
+            string query = "SELECT COUNT(*) FROM \"Users\" WHERE LOWER(\"Email\") = LOWER(@email)";
             try
             {
                 using var connection = new NpgsqlConnection(_connectionString);
                 using var command = new NpgsqlCommand(query, connection);
-                command.Parameters.AddWithValue("@email", email);
+                command.Parameters.AddWithValue("@email", trimmed);
                 connection.Open();
                 return Convert.ToInt64(command.ExecuteScalar()) > 0;
             }
@@ -421,7 +336,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== লাস্ট লগইন আপডেট =====
         public void UpdateLastLogin(string username)
         {
             string query = @"UPDATE ""Users"" SET ""LastLoginAt"" = @lastLogin WHERE ""UserName"" = @username";
@@ -444,9 +358,6 @@ namespace Tutorbub.Models
         // ===== TEACHER REQUEST RELATED METHODS =====
         // ============================================================
 
-        // ===== Teacher Request তৈরি করা =====
-        // errorMessage আউট প্যারামিটারে আসল exception message পাঠানো হয়, যাতে UI-তে
-        // দেখানো যায় ঠিক কী কারণে insert ব্যর্থ হয়েছে (যেমন: টেবিল নেই, কলাম টাইপ মিসম্যাচ ইত্যাদি)।
         public bool CreateTeacherRequest(TeacherRequest request, out string? errorMessage)
         {
             errorMessage = null;
@@ -483,19 +394,15 @@ namespace Tutorbub.Models
 
                 connection.Open();
                 int result = command.ExecuteNonQuery();
-                Console.WriteLine($"CreateTeacherRequest: {result} rows affected, UserId: {request.UserId}");
                 return result > 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error creating teacher request: " + ex.Message);
-                Console.WriteLine("Stack trace: " + ex.StackTrace);
                 errorMessage = ex.Message;
                 return false;
             }
         }
 
-        // ===== ইউজারের টিচার রিকোয়েস্ট স্ট্যাটাস চেক করা =====
         public string GetUserTeacherRequestStatus(int userId)
         {
             string query = @"SELECT ""Status"" FROM ""TeacherRequests"" 
@@ -512,14 +419,12 @@ namespace Tutorbub.Models
                 var result = command.ExecuteScalar();
                 return result?.ToString() ?? "None";
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine("Error getting teacher request status: " + ex.Message);
                 return "None";
             }
         }
 
-        // ===== সব Teacher Request পাওয়া =====
         public List<TeacherRequest> GetAllTeacherRequests()
         {
             var requests = new List<TeacherRequest>();
@@ -534,40 +439,16 @@ namespace Tutorbub.Models
 
                 while (reader.Read())
                 {
-                    requests.Add(new TeacherRequest
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
-                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
-                        Email = reader["Email"]?.ToString() ?? string.Empty,
-                        MobileNumber = reader["MobileNumber"]?.ToString() ?? string.Empty,
-                        Education = reader["Education"]?.ToString() ?? string.Empty,
-                        Institution = reader["Institution"]?.ToString() ?? string.Empty,
-                        SubjectExpertise = reader["SubjectExpertise"]?.ToString() ?? string.Empty,
-                        Experience = reader["Experience"]?.ToString() ?? string.Empty,
-                        TeachingStyle = reader["TeachingStyle"]?.ToString() ?? string.Empty,
-                        AvailableDays = reader["AvailableDays"]?.ToString() ?? string.Empty,
-                        PreferredTime = reader["PreferredTime"]?.ToString() ?? string.Empty,
-                        HourlyRate = reader["HourlyRate"]?.ToString() ?? string.Empty,
-                        CvLink = reader["CvLink"]?.ToString() ?? string.Empty,
-                        WhyTeach = reader["WhyTeach"]?.ToString() ?? string.Empty,
-                        Status = reader["Status"]?.ToString() ?? "Pending",
-                        RequestDate = reader["RequestDate"] as DateTime? ?? DateTime.UtcNow,
-                        ResponseDate = reader["ResponseDate"] as DateTime?,
-                        AdminNote = reader["AdminNote"]?.ToString()
-                    });
+                    requests.Add(MapTeacherRequest(reader));
                 }
-                Console.WriteLine($"GetAllTeacherRequests: {requests.Count} requests found");
                 return requests;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error getting teacher requests: " + ex.Message);
                 throw new Exception("Error getting teacher requests: " + ex.Message);
             }
         }
 
-        // ===== Teacher Request আপডেট করা =====
         public bool UpdateTeacherRequest(int requestId, string status, string? adminNote)
         {
             string query = @"UPDATE ""TeacherRequests"" 
@@ -591,7 +472,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== Teacher Request দ্বারা ইউজার পাওয়া =====
         public TeacherRequest? GetTeacherRequestById(int requestId)
         {
             string query = @"SELECT * FROM ""TeacherRequests"" WHERE ""Id"" = @id";
@@ -606,28 +486,7 @@ namespace Tutorbub.Models
 
                 if (reader.Read())
                 {
-                    return new TeacherRequest
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
-                        FullName = reader["FullName"]?.ToString() ?? string.Empty,
-                        Email = reader["Email"]?.ToString() ?? string.Empty,
-                        MobileNumber = reader["MobileNumber"]?.ToString() ?? string.Empty,
-                        Education = reader["Education"]?.ToString() ?? string.Empty,
-                        Institution = reader["Institution"]?.ToString() ?? string.Empty,
-                        SubjectExpertise = reader["SubjectExpertise"]?.ToString() ?? string.Empty,
-                        Experience = reader["Experience"]?.ToString() ?? string.Empty,
-                        TeachingStyle = reader["TeachingStyle"]?.ToString() ?? string.Empty,
-                        AvailableDays = reader["AvailableDays"]?.ToString() ?? string.Empty,
-                        PreferredTime = reader["PreferredTime"]?.ToString() ?? string.Empty,
-                        HourlyRate = reader["HourlyRate"]?.ToString() ?? string.Empty,
-                        CvLink = reader["CvLink"]?.ToString() ?? string.Empty,
-                        WhyTeach = reader["WhyTeach"]?.ToString() ?? string.Empty,
-                        Status = reader["Status"]?.ToString() ?? "Pending",
-                        RequestDate = reader["RequestDate"] as DateTime? ?? DateTime.UtcNow,
-                        ResponseDate = reader["ResponseDate"] as DateTime?,
-                        AdminNote = reader["AdminNote"]?.ToString()
-                    };
+                    return MapTeacherRequest(reader);
                 }
                 return null;
             }
@@ -637,7 +496,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== ইউজারকে টিচার বানানো =====
         public bool MakeUserTeacher(int userId)
         {
             string query = @"UPDATE ""Users"" SET ""Role"" = 'Teacher' WHERE ""Id"" = @id";
@@ -656,10 +514,6 @@ namespace Tutorbub.Models
             }
         }
 
-        // ===== Teacher Request নিজের Id দিয়ে সরাসরি ডিলিট =====
-        // যদি এই request-এর সাথে জড়িত UserId এর কোনো ইউজার Users টেবিলে
-        // না থাকে (যেমন পুরনো/টেস্ট ডেটা), তাহলেও এই মেথড দিয়ে শুধু এই
-        // নির্দিষ্ট request রো-টা মুছে ফেলা যাবে।
         public bool DeleteTeacherRequestById(int requestId)
         {
             string query = "DELETE FROM \"TeacherRequests\" WHERE \"Id\" = @id";
@@ -675,6 +529,750 @@ namespace Tutorbub.Models
             {
                 throw new Exception("Error deleting teacher request: " + ex.Message);
             }
+        }
+
+        // ============================================================
+        // ===== FIND TUTOR — APPROVED TEACHERS =====
+        // ============================================================
+        public List<TutorProfile> GetApprovedTutors()
+        {
+            var tutors = new List<TutorProfile>();
+
+            string query = @"
+                SELECT 
+                    ""Id"", ""UserId"", ""FullName"", ""Email"", ""MobileNumber"",
+                    ""Education"", ""Institution"", ""SubjectExpertise"", ""Experience"",
+                    ""TeachingStyle"", ""AvailableDays"", ""PreferredTime"", ""HourlyRate"",
+                    ""CvLink"", ""WhyTeach"", ""Status"", ""RequestDate""
+                FROM ""TeacherRequests""
+                WHERE ""Status"" = 'Approved'
+                ORDER BY ""RequestDate"" DESC";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                int index = 1;
+
+                while (reader.Read())
+                {
+                    var fullName = reader["FullName"]?.ToString() ?? "Tutor";
+                    var requestId = reader.GetInt32(reader.GetOrdinal("Id"));
+                    var tutorId = "TCH-" + (1000 + requestId);
+
+                    var words = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    string initials = "T";
+                    if (words.Length >= 2)
+                        initials = words[0][0].ToString().ToUpper() + words[1][0].ToString().ToUpper();
+                    else if (words.Length == 1 && words[0].Length > 0)
+                        initials = words[0][0].ToString().ToUpper();
+
+                    var subjectExpertise = reader["SubjectExpertise"]?.ToString() ?? "";
+                    var subjects = subjectExpertise
+                        .Split(new[] { ',', '/', '&' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .ToList();
+                    if (subjects.Count == 0) subjects.Add("General");
+
+                    var classes = new List<string> { "All Classes" };
+
+                    int expYears = 0;
+                    var expStr = reader["Experience"]?.ToString() ?? "";
+                    var expDigits = new string(expStr.Where(char.IsDigit).ToArray());
+                    if (!string.IsNullOrEmpty(expDigits))
+                    {
+                        var numStr = expDigits.Length > 2 ? expDigits.Substring(0, 2) : expDigits;
+                        int.TryParse(numStr, out expYears);
+                    }
+
+                    double rating = Math.Round(4.5 + (index % 5) * 0.1, 1);
+                    int reviews = 20 + index * 3;
+
+                    decimal monthlyFee = 5000 + (index % 6) * 1000;
+                    var hourlyRateStr = reader["HourlyRate"]?.ToString() ?? "";
+                    if (decimal.TryParse(hourlyRateStr, out decimal hourlyRate) && hourlyRate > 0)
+                    {
+                        monthlyFee = Math.Round(hourlyRate * 30, 0);
+                    }
+
+                    tutors.Add(new TutorProfile
+                    {
+                        Id = requestId,
+                        TutorId = tutorId,
+                        FullName = fullName,
+                        Initials = initials,
+                        Gender = "Any",
+                        PhotoUrl = "",
+                        Subjects = subjects,
+                        Classes = classes,
+                        Qualification = reader["Education"]?.ToString() ?? "Not specified",
+                        Institution = reader["Institution"]?.ToString() ?? "Not specified",
+                        ExperienceYears = expYears,
+                        Location = "Bangladesh",
+                        TeachingMode = "Both",
+                        MonthlyFee = monthlyFee,
+                        Rating = rating,
+                        TotalReviews = reviews,
+                        AvailableTime = !string.IsNullOrEmpty(reader["PreferredTime"]?.ToString())
+                            ? reader["PreferredTime"].ToString()!
+                            : (reader["AvailableDays"]?.ToString() ?? "Contact for schedule"),
+                        About = !string.IsNullOrEmpty(reader["WhyTeach"]?.ToString())
+                            ? reader["WhyTeach"].ToString()!
+                            : (!string.IsNullOrEmpty(reader["TeachingStyle"]?.ToString())
+                                ? reader["TeachingStyle"].ToString()!
+                                : "Experienced tutor ready to help students excel."),
+                        IsVerified = true,
+                        IsTopRated = index <= 3
+                    });
+
+                    index++;
+                }
+
+                Console.WriteLine($"GetApprovedTutors: {tutors.Count} approved tutors found");
+                return tutors;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting approved tutors: " + ex.Message);
+                return new List<TutorProfile>();
+            }
+        }
+
+        // ============================================================
+        // ===== PAYMENT / COURSE ORDER RELATED METHODS =====
+        // ============================================================
+
+        public bool CreateCourseOrder(CourseOrder order, out string? errorMessage)
+        {
+            errorMessage = null;
+            string query = @"
+                INSERT INTO ""CourseOrders"" 
+                (""UserId"", ""CourseId"", ""CourseName"", ""CourseImage"", ""Price"", 
+                 ""PaymentMethod"", ""TransactionId"", ""SenderMobileNumber"", 
+                 ""PaymentStatus"", ""OrderDate"")
+                VALUES 
+                (@userId, @courseId, @courseName, @courseImage, @price,
+                 @paymentMethod, @transactionId, @senderMobileNumber,
+                 'Pending', @orderDate)
+                RETURNING ""Id""";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@userId", order.UserId);
+                command.Parameters.AddWithValue("@courseId", order.CourseId);
+                command.Parameters.AddWithValue("@courseName", order.CourseName ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@courseImage", order.CourseImage ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@price", order.Price);
+                command.Parameters.AddWithValue("@paymentMethod", order.PaymentMethod ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@transactionId", order.TransactionId ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@senderMobileNumber", order.SenderMobileNumber ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@orderDate", order.OrderDate);
+
+                connection.Open();
+                var result = command.ExecuteScalar();
+                if (result != null && int.TryParse(result.ToString(), out int newId))
+                {
+                    order.Id = newId;
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
+        }
+
+        public List<CourseOrder> GetUserOrders(int userId)
+        {
+            var orders = new List<CourseOrder>();
+            string query = @"
+                SELECT ""Id"", ""UserId"", ""CourseId"", ""CourseName"", ""CourseImage"", 
+                       ""Price"", ""PaymentMethod"", ""TransactionId"", ""SenderMobileNumber"",
+                       ""PaymentStatus"", ""AdminNote"", ""OrderDate"", ""VerifiedDate"", ""VerifiedBy""
+                FROM ""CourseOrders""
+                WHERE ""UserId"" = @userId
+                ORDER BY ""OrderDate"" DESC";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    orders.Add(MapCourseOrder(reader));
+                }
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting user orders: " + ex.Message);
+                return new List<CourseOrder>();
+            }
+        }
+
+        public List<AdminPaymentViewModel> GetAllOrders(string? statusFilter = null)
+        {
+            var orders = new List<AdminPaymentViewModel>();
+            string query = @"
+                SELECT o.""Id"", o.""UserId"", o.""CourseId"", o.""CourseName"", o.""CourseImage"",
+                       o.""Price"", o.""PaymentMethod"", o.""TransactionId"", o.""SenderMobileNumber"",
+                       o.""PaymentStatus"", o.""AdminNote"", o.""OrderDate"", o.""VerifiedDate"",
+                       u.""UserName"", u.""FullName"", u.""Email"", u.""MobileNumber""
+                FROM ""CourseOrders"" o
+                LEFT JOIN ""Users"" u ON o.""UserId"" = u.""Id""";
+
+            if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "all")
+            {
+                query += @" WHERE o.""PaymentStatus"" = @status";
+            }
+
+            query += @" ORDER BY o.""OrderDate"" DESC";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+
+                if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "all")
+                {
+                    command.Parameters.AddWithValue("@status", statusFilter);
+                }
+
+                connection.Open();
+                using var reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    orders.Add(new AdminPaymentViewModel
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                        CourseId = reader.GetInt32(reader.GetOrdinal("CourseId")),
+                        CourseName = reader["CourseName"]?.ToString() ?? "",
+                        CourseImage = reader["CourseImage"]?.ToString() ?? "",
+                        Price = Convert.ToDecimal(reader["Price"]),
+                        PaymentMethod = reader["PaymentMethod"]?.ToString() ?? "",
+                        TransactionId = reader["TransactionId"]?.ToString() ?? "",
+                        SenderMobileNumber = reader["SenderMobileNumber"]?.ToString() ?? "",
+                        PaymentStatus = reader["PaymentStatus"]?.ToString() ?? "Pending",
+                        AdminNote = reader["AdminNote"]?.ToString(),
+                        OrderDate = reader["OrderDate"] as DateTime? ?? DateTime.UtcNow,
+                        VerifiedDate = reader["VerifiedDate"] as DateTime?,
+                        UserName = reader["UserName"]?.ToString() ?? "",
+                        UserFullName = reader["FullName"]?.ToString() ?? "",
+                        UserEmail = reader["Email"]?.ToString() ?? "",
+                        UserMobile = reader["MobileNumber"]?.ToString() ?? ""
+                    });
+                }
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting all orders: " + ex.Message);
+                return new List<AdminPaymentViewModel>();
+            }
+        }
+
+        public CourseOrder? GetOrderById(int orderId)
+        {
+            string query = @"
+                SELECT ""Id"", ""UserId"", ""CourseId"", ""CourseName"", ""CourseImage"", 
+                       ""Price"", ""PaymentMethod"", ""TransactionId"", ""SenderMobileNumber"",
+                       ""PaymentStatus"", ""AdminNote"", ""OrderDate"", ""VerifiedDate"", ""VerifiedBy""
+                FROM ""CourseOrders""
+                WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", orderId);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    return MapCourseOrder(reader);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting order by id: " + ex.Message);
+                return null;
+            }
+        }
+
+        public bool ApproveOrder(int orderId, int adminId, string? adminNote = null)
+        {
+            string query = @"
+                UPDATE ""CourseOrders"" 
+                SET ""PaymentStatus"" = 'Approved', 
+                    ""VerifiedDate"" = @verifiedDate, 
+                    ""VerifiedBy"" = @verifiedBy,
+                    ""AdminNote"" = @adminNote
+                WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@verifiedDate", DateTime.UtcNow);
+                command.Parameters.AddWithValue("@verifiedBy", adminId);
+                command.Parameters.AddWithValue("@adminNote", adminNote ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@id", orderId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error approving order: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool RejectOrder(int orderId, int adminId, string? adminNote = null)
+        {
+            string query = @"
+                UPDATE ""CourseOrders"" 
+                SET ""PaymentStatus"" = 'Rejected', 
+                    ""VerifiedDate"" = @verifiedDate, 
+                    ""VerifiedBy"" = @verifiedBy,
+                    ""AdminNote"" = @adminNote
+                WHERE ""Id"" = @id";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@verifiedDate", DateTime.UtcNow);
+                command.Parameters.AddWithValue("@verifiedBy", adminId);
+                command.Parameters.AddWithValue("@adminNote", adminNote ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@id", orderId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error rejecting order: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool IsUserEnrolled(int userId, int courseId)
+        {
+            string query = @"
+                SELECT COUNT(*) FROM ""CourseOrders"" 
+                WHERE ""UserId"" = @userId 
+                  AND ""CourseId"" = @courseId 
+                  AND ""PaymentStatus"" = 'Approved'";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                command.Parameters.AddWithValue("@courseId", courseId);
+                connection.Open();
+                return Convert.ToInt64(command.ExecuteScalar()) > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error checking enrollment: " + ex.Message);
+                return false;
+            }
+        }
+
+        public List<int> GetUserEnrolledCourseIds(int userId)
+        {
+            var courseIds = new List<int>();
+            string query = @"
+                SELECT DISTINCT ""CourseId"" FROM ""CourseOrders"" 
+                WHERE ""UserId"" = @userId 
+                  AND ""PaymentStatus"" = 'Approved'";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    courseIds.Add(reader.GetInt32(0));
+                }
+                return courseIds;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting enrolled courses: " + ex.Message);
+                return new List<int>();
+            }
+        }
+
+        // ============================================================
+        // ===== ENROLLED COURSES (MY CLASS) — NEW =====
+        // ============================================================
+
+        /// <summary>
+        /// ইউজারের Approved/Enrolled কোর্সগুলোর Full ডিটেইলস (My Class পেজের জন্য)
+        /// </summary>
+        public List<EnrolledCourseViewModel> GetUserEnrolledCourses(int userId)
+        {
+            var enrolled = new List<EnrolledCourseViewModel>();
+            string query = @"
+                SELECT DISTINCT ON (""CourseId"")
+                       ""CourseId"", ""CourseName"", ""CourseImage"", ""Price"", ""VerifiedDate"", ""OrderDate""
+                FROM ""CourseOrders""
+                WHERE ""UserId"" = @userId AND ""PaymentStatus"" = 'Approved'
+                ORDER BY ""CourseId"", ""OrderDate"" DESC";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    enrolled.Add(new EnrolledCourseViewModel
+                    {
+                        CourseId = reader.GetInt32(reader.GetOrdinal("CourseId")),
+                        CourseName = reader["CourseName"]?.ToString() ?? "",
+                        CourseImage = reader["CourseImage"]?.ToString() ?? "",
+                        Price = Convert.ToDecimal(reader["Price"]),
+                        EnrolledDate = (reader["VerifiedDate"] as DateTime?)
+                                        ?? (reader["OrderDate"] as DateTime?)
+                                        ?? DateTime.UtcNow
+                    });
+                }
+                return enrolled;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting enrolled courses: " + ex.Message);
+                return new List<EnrolledCourseViewModel>();
+            }
+        }
+
+        public (int Pending, int Approved, int Rejected, decimal TotalRevenue) GetPaymentStats()
+        {
+            string query = @"
+                SELECT 
+                    COUNT(*) FILTER (WHERE ""PaymentStatus"" = 'Pending') as pending,
+                    COUNT(*) FILTER (WHERE ""PaymentStatus"" = 'Approved') as approved,
+                    COUNT(*) FILTER (WHERE ""PaymentStatus"" = 'Rejected') as rejected,
+                    COALESCE(SUM(""Price"") FILTER (WHERE ""PaymentStatus"" = 'Approved'), 0) as revenue
+                FROM ""CourseOrders""";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    return (
+                        Convert.ToInt32(reader["pending"]),
+                        Convert.ToInt32(reader["approved"]),
+                        Convert.ToInt32(reader["rejected"]),
+                        Convert.ToDecimal(reader["revenue"])
+                    );
+                }
+                return (0, 0, 0, 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting payment stats: " + ex.Message);
+                return (0, 0, 0, 0);
+            }
+        }
+
+        // ============================================================
+        // ===== NOTIFICATION RELATED METHODS =====
+        // ============================================================
+
+        /// <summary>
+        /// নতুন নোটিফিকেশন তৈরি করা
+        /// </summary>
+        public bool CreateNotification(int userId, string title, string message,
+            string type = "info", string? link = null, string icon = "fa-bell")
+        {
+            string query = @"
+                INSERT INTO ""Notifications"" 
+                (""UserId"", ""Title"", ""Message"", ""Type"", ""Icon"", ""Link"", ""IsRead"", ""CreatedAt"")
+                VALUES 
+                (@userId, @title, @message, @type, @icon, @link, FALSE, @createdAt)";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@userId", userId);
+                command.Parameters.AddWithValue("@title", title ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@message", message ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@type", type ?? "info");
+                command.Parameters.AddWithValue("@icon", icon ?? "fa-bell");
+                command.Parameters.AddWithValue("@link", link ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@createdAt", DateTime.UtcNow);
+
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error creating notification: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// ইউজারের সব নোটিফিকেশন পাওয়া
+        /// </summary>
+        public List<Notification> GetUserNotifications(int userId, int limit = 20)
+        {
+            var notifications = new List<Notification>();
+            string query = @"
+                SELECT ""Id"", ""UserId"", ""Title"", ""Message"", ""Type"", ""Icon"", 
+                       ""Link"", ""IsRead"", ""CreatedAt""
+                FROM ""Notifications""
+                WHERE ""UserId"" = @userId
+                ORDER BY ""CreatedAt"" DESC
+                LIMIT @limit";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                command.Parameters.AddWithValue("@limit", limit);
+                connection.Open();
+
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    notifications.Add(new Notification
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                        Title = reader["Title"]?.ToString() ?? "",
+                        Message = reader["Message"]?.ToString() ?? "",
+                        Type = reader["Type"]?.ToString() ?? "info",
+                        Icon = reader["Icon"]?.ToString() ?? "fa-bell",
+                        Link = reader["Link"]?.ToString(),
+                        IsRead = reader["IsRead"] as bool? ?? false,
+                        CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow
+                    });
+                }
+                return notifications;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting notifications: " + ex.Message);
+                return new List<Notification>();
+            }
+        }
+
+        /// <summary>
+        /// অপঠিত নোটিফিকেশন কাউন্ট
+        /// </summary>
+        public int GetUnreadNotificationCount(int userId)
+        {
+            string query = @"SELECT COUNT(*) FROM ""Notifications"" 
+                             WHERE ""UserId"" = @userId AND ""IsRead"" = FALSE";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+                return Convert.ToInt32(command.ExecuteScalar());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting unread count: " + ex.Message);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// একটি নোটিফিকেশন Read হিসেবে মার্ক করা
+        /// </summary>
+        public bool MarkNotificationAsRead(int notificationId, int userId)
+        {
+            string query = @"UPDATE ""Notifications"" 
+                             SET ""IsRead"" = TRUE 
+                             WHERE ""Id"" = @id AND ""UserId"" = @userId";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@id", notificationId);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error marking as read: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// সব নোটিফিকেশন Read হিসেবে মার্ক করা
+        /// </summary>
+        public bool MarkAllNotificationsAsRead(int userId)
+        {
+            string query = @"UPDATE ""Notifications"" 
+                             SET ""IsRead"" = TRUE 
+                             WHERE ""UserId"" = @userId AND ""IsRead"" = FALSE";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+                return command.ExecuteNonQuery() >= 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error marking all as read: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// সব নোটিফিকেশন ডিলিট করা
+        /// </summary>
+        public bool ClearUserNotifications(int userId)
+        {
+            string query = @"DELETE FROM ""Notifications"" WHERE ""UserId"" = @userId";
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@userId", userId);
+                connection.Open();
+                return command.ExecuteNonQuery() >= 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error clearing notifications: " + ex.Message);
+                return false;
+            }
+        }
+
+        // ============================================================
+        // ===== PRIVATE MAPPERS =====
+        // ============================================================
+
+        private User MapUser(NpgsqlDataReader reader)
+        {
+            return new User
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                UserName = reader["UserName"]?.ToString() ?? string.Empty,
+                Password = reader["Password"]?.ToString() ?? string.Empty,
+                FullName = reader["FullName"]?.ToString() ?? string.Empty,
+                Email = reader["Email"]?.ToString() ?? string.Empty,
+                CreatedAt = reader["CreatedAt"] as DateTime? ?? DateTime.UtcNow,
+                LastLoginAt = reader["LastLoginAt"] as DateTime?,
+                Role = reader["Role"]?.ToString() ?? "User",
+                IsActive = reader["IsActive"] as bool? ?? true,
+                MobileNumber = reader["MobileNumber"]?.ToString(),
+                ProfileImage = reader["ProfileImage"]?.ToString(),
+                Gender = reader["Gender"]?.ToString(),
+                AgeRange = reader["AgeRange"]?.ToString(),
+                PrimaryDeviceType = reader["PrimaryDeviceType"]?.ToString(),
+                YearsOfExperience = reader["YearsOfExperience"]?.ToString(),
+                AreaType = reader["AreaType"]?.ToString(),
+                Country = reader["Country"]?.ToString(),
+                StreetAddress = reader["StreetAddress"]?.ToString(),
+                PermanentAddress = reader["PermanentAddress"]?.ToString(),
+                EducationLevel = reader["EducationLevel"]?.ToString(),
+                CurrentStudyStatus = reader["CurrentStudyStatus"]?.ToString(),
+                ExamDegreeTitle = reader["ExamDegreeTitle"]?.ToString(),
+                InstitutionName = reader["InstitutionName"]?.ToString(),
+                PassingYear = reader["PassingYear"]?.ToString(),
+                IsCSEStudent = reader["IsCSEStudent"] as bool?,
+                CvLink = reader["CvLink"]?.ToString(),
+                GithubProfile = reader["GithubProfile"]?.ToString(),
+                PortfolioLink = reader["PortfolioLink"]?.ToString(),
+                LinkedInProfile = reader["LinkedInProfile"]?.ToString(),
+                ProfileImageLink = reader["ProfileImageLink"]?.ToString()
+            };
+        }
+
+        private TeacherRequest MapTeacherRequest(NpgsqlDataReader reader)
+        {
+            return new TeacherRequest
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                FullName = reader["FullName"]?.ToString() ?? string.Empty,
+                Email = reader["Email"]?.ToString() ?? string.Empty,
+                MobileNumber = reader["MobileNumber"]?.ToString() ?? string.Empty,
+                Education = reader["Education"]?.ToString() ?? string.Empty,
+                Institution = reader["Institution"]?.ToString() ?? string.Empty,
+                SubjectExpertise = reader["SubjectExpertise"]?.ToString() ?? string.Empty,
+                Experience = reader["Experience"]?.ToString() ?? string.Empty,
+                TeachingStyle = reader["TeachingStyle"]?.ToString() ?? string.Empty,
+                AvailableDays = reader["AvailableDays"]?.ToString() ?? string.Empty,
+                PreferredTime = reader["PreferredTime"]?.ToString() ?? string.Empty,
+                HourlyRate = reader["HourlyRate"]?.ToString() ?? string.Empty,
+                CvLink = reader["CvLink"]?.ToString() ?? string.Empty,
+                WhyTeach = reader["WhyTeach"]?.ToString() ?? string.Empty,
+                Status = reader["Status"]?.ToString() ?? "Pending",
+                RequestDate = reader["RequestDate"] as DateTime? ?? DateTime.UtcNow,
+                ResponseDate = reader["ResponseDate"] as DateTime?,
+                AdminNote = reader["AdminNote"]?.ToString()
+            };
+        }
+
+        private CourseOrder MapCourseOrder(NpgsqlDataReader reader)
+        {
+            return new CourseOrder
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+                CourseId = reader.GetInt32(reader.GetOrdinal("CourseId")),
+                CourseName = reader["CourseName"]?.ToString() ?? "",
+                CourseImage = reader["CourseImage"]?.ToString() ?? "",
+                Price = Convert.ToDecimal(reader["Price"]),
+                PaymentMethod = reader["PaymentMethod"]?.ToString() ?? "",
+                TransactionId = reader["TransactionId"]?.ToString() ?? "",
+                SenderMobileNumber = reader["SenderMobileNumber"]?.ToString() ?? "",
+                PaymentStatus = reader["PaymentStatus"]?.ToString() ?? "Pending",
+                AdminNote = reader["AdminNote"]?.ToString(),
+                OrderDate = reader["OrderDate"] as DateTime? ?? DateTime.UtcNow,
+                VerifiedDate = reader["VerifiedDate"] as DateTime?,
+                VerifiedBy = reader["VerifiedBy"] as int?
+            };
         }
     }
 }
